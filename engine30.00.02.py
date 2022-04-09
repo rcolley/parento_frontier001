@@ -13,7 +13,7 @@ class MyProblem(Problem):
                          n_obj=5,
                          n_constr=3,
                          xl=np.array([0, 0, 350, 0, 0, 0]), #minimum of: index of ply thickness, index of breath, index of depth, spacing, index of beam, ply 25 or 50mm, screed thickness
-                         xu=np.array([5, 10, 600, 49, 1, 100])) #maximum of above
+                         xu=np.array([5, 10, 600, 46, 1, 100])) #maximum of above
 
     def _evaluate(self, X, out, *args, **kwargs):
         l1 = 3000
@@ -26,6 +26,11 @@ class MyProblem(Problem):
         g1 = -f5[0] + 4
         g2 = f5[0] - 8
         g3 = f5[1] - 3  #acceptance class restriction
+        '''print("f5[0] = ", f5[0][0])
+        print("f6[0][0] = ", f6[0][0])
+        print("f5[0][0] = ", f7[0][0])
+        print("f5[3] = ", f5[3])
+        print("f5[4] = ", f5[4])'''
 
         out["F"] = np.column_stack([f5[0], f6[0][0], f7[0][0], f5[3], f5[4]])
         out["G"] = np.column_stack([g1, g2, g3])
@@ -40,7 +45,7 @@ from pymoo.factory import get_sampling, get_crossover, get_mutation
 
 algorithm = NSGA2(
     pop_size=200,
-    n_offsprings=100,
+    n_offsprings=200,
     sampling=get_sampling("real_random"),
     crossover=get_crossover("real_sbx", prob=0.9, eta=15),
     mutation=get_mutation("real_pm", eta=20),
@@ -107,18 +112,14 @@ from pymoo.decomposition.asf import ASF
 
 
 decomp = ASF()
-
 i = decomp.do(nF, 1/weights).argmin()
-
 print("Best regarding ASF: Point \ni = %s\nF = %s" % (i, F[i]))
 
 
 #PSEUDO-WEIGHTS
 
 from pymoo.decision_making.pseudo_weights import PseudoWeights
-
 i = PseudoWeights(weights).do(nF)
-
 print("Best regarding Pseudo Weights: Point \ni = %s\nF = %s" % (i, F[i]))
 
 '''
@@ -132,13 +133,11 @@ plt.show()
 '''
 
 '''GRAPHS'''
-
-
 index_min_R_F = min(range(len(F[:, 0])), key=F[:, 0].__getitem__)
-index_min_EC = min(range(len(F[:, 1])), key=F[:, 1].__getitem__)
-index_min_cost = min(range(len(F[:, 2])), key=F[:, 2].__getitem__)
-index_min_depth = min(range(len(F[:, 3])), key=F[:, 3].__getitem__)
-index_min_mass = min(range(len(F[:, 4])), key=F[:, 4].__getitem__)
+index_min_EC_F = min(range(len(F[:, 1])), key=F[:, 1].__getitem__)
+index_min_cost_F = min(range(len(F[:, 2])), key=F[:, 2].__getitem__)
+index_min_depth_F = min(range(len(F[:, 3])), key=F[:, 3].__getitem__)
+index_min_mass_F = min(range(len(F[:, 4])), key=F[:, 4].__getitem__)
 
 
 #SCATTER
@@ -149,14 +148,38 @@ import matplotlib.pyplot as plt
 hfont = {'fontname':'Segoe UI'}
 plot = Scatter(labels=["R", "CO2e", "£", "h", "kg"], **hfont)
 plot.add(F, s=10)
-plot.add(F[index_min_R_F], s=30, color="orange")
-plot.add(F[index_min_EC], s=30, color='#008000')
-plot.add(F[index_min_cost], s=30, color='#069AF3')
-plot.add(F[index_min_depth], s=30, color='#000000')
-plot.add(F[index_min_mass], s=30, color="navy")
+plot.add(F[index_min_R_F], s=30, color="orange", label="R_min")
+plot.add(F[index_min_EC_F], s=30, color='#008000', label="EC_min")
+plot.add(F[index_min_cost_F], s=30, color='#069AF3')
+plot.add(F[index_min_depth_F], s=30, color='#000000')
+plot.add(F[index_min_mass_F], s=30, color="navy")
 plot.add(F[i], s=30, color="red")
 plot.show()
+'''
+#3dSCATTER
+from pymoo.visualization.scatter import Scatter
+from pymoo.factory import get_problem, get_reference_directions
+import matplotlib.pyplot as plt
 
+Fp = F[:, 1:4]
+
+print("F =", F)
+print("Fp =", Fp)
+
+index_min_EC_Fp = min(range(len(Fp[:, 0])), key=Fp[:, 0].__getitem__)
+index_min_cost_Fp = min(range(len(Fp[:, 1])), key=Fp[:, 1].__getitem__)
+index_min_h_Fp = min(range(len(Fp[:, 2])), key=Fp[:, 2].__getitem__)
+
+
+hfont = {'fontname':'Segoe UI'}
+plot = Scatter(labels=["CO2e", "£", "kg"], **hfont)
+plot.add(Fp, s=5)
+plot.add(Fp[index_min_EC_Fp], s=30, color="orange", label="R_min")
+plot.add(Fp[index_min_cost_Fp], s=30, color='#008000', label="EC_min")
+plot.add(Fp[index_min_h_Fp], s=30, color='#069AF3')
+plot.add(Fp[i], s=30, color="red")
+plot.show()
+'''
 
 #PCP CHART DEFINITION
 from pymoo.visualization.pcp import PCP
@@ -178,13 +201,13 @@ plot = PCP(title=("params and obj", {'pad': 30}),
            )
 
 plot.set_axis_style(color="grey", alpha=1)
-plot.add(a, color="grey", alpha=0.3)
-plot.add(a[index_min_R], linewidth=2.5, color="orange", label="R_min")
-plot.add(a[index_min_EC], linewidth=2.5, color='#008000', label="EC_min")
-plot.add(a[index_min_cost], linewidth=2.5, color='#069AF3', label="index_min_cost")
-plot.add(a[index_min_depth], linewidth=2.5, color='#000000', label="index_min_depth")
-plot.add(a[index_min_mass], linewidth=2.5, color="navy", label="index_min_mass")
-plot.add(a[i], linewidth=2.5, color='#E50000', label="i")
+plot.add(a, color="grey", alpha=0.2)
+plot.add(a[index_min_R], linewidth=2, color="orange", label="R_min")
+plot.add(a[index_min_EC], linewidth=2, color='#008000', label="EC_min")
+plot.add(a[index_min_cost], linewidth=2, color='#069AF3', label="index_min_cost")
+plot.add(a[index_min_depth], linewidth=2, color='#000000', label="index_min_depth")
+plot.add(a[index_min_mass], linewidth=2, color="navy", label="index_min_mass")
+plot.add(a[i], linewidth=2, color='#E50000', label="i")
 
 plot.show()
 
@@ -196,7 +219,7 @@ print("varibles = ", varibles)
 print("results = ", results)
 
 beamAttInt = math.ceil(varibles[3])
-attributes = sl.UCsectionAgregator(beamAttInt)
+attributes = sl.UCsectionAgregator_ltd(beamAttInt)
 
 joist_breath_array = [38, 47, 50, 63, 75, 100]
 joist_depth_array = [97, 122, 140, 147, 170, 184, 195, 220, 235, 250, 300]
